@@ -29,9 +29,9 @@ ocean_df <- bioregion_df%>%
             st_transform(CanProj)
 
 #load the cpcad_marine datafile
-cpcad_marine <- read_sf("data/cpcad_complete.shp")%>%
-  st_transform(CanProj)%>%
-  st_make_valid()
+cpcad_marine <- read_sf("data/shapefiles/cpcad_complete.shp")%>%
+                st_transform(CanProj)%>%
+                st_make_valid()
 
 #colour palatte for plotting
 colour_pal_types <- c("MPA" = "#252A6B", 
@@ -94,23 +94,25 @@ plot_region <- canada_eez%>%st_bbox()
 ##map of Canadian MPAs  --------------
 
 #bounding boxes for ocean plots
-atlantic_box <- oceans%>%
+atlantic_box <- ocean_df%>%
   filter(ocean=="Atlantic")%>%
   st_transform(CanProj)%>%
   st_buffer(50*1000)%>%
   st_bbox()
 
-pacific_box <- oceans%>%
+pacific_box <- ocean_df%>%
   filter(ocean=="Pacific")%>%
   st_transform(CanProj)%>%
   st_buffer(50*1000)%>%
   st_bbox()
 
-arctic_box <- oceans%>%
+arctic_box <- ocean_df%>%
   filter(ocean=="Arctic")%>%
   st_transform(CanProj)%>%
   st_buffer(20*1000)%>%
   st_bbox()
+
+#construct plots ----
 
 p_atlantic <- ggplot()+
   geom_sf(data=bioregion_df,fill=NA)+
@@ -162,5 +164,21 @@ p_canada <- ggplot()+
 p_pacific <- p_pacific + theme(legend.position = "none")
 
 combo_regions <- p_pacific + p_arctic +  p_atlantic
-ggsave("output/combo_regions.png",combo_regions,width=10,height=5,units="in",dpi=300)
-ggsave("output/canada_mcn.png",p_canada,width=10,height=5,units="in",dpi=300)
+#ggsave("output/combo_regions.png",combo_regions,width=10,height=5,units="in",dpi=300)
+#ggsave("output/canada_mcn.png",p_canada,width=10,height=5,units="in",dpi=300)
+
+#stack the plots
+p_canada_no_legend <- p_canada + 
+  theme(
+    legend.position = "none", #remove the legend which causes issues when combined
+    plot.margin = margin(b = 0, t = 0)
+  )
+
+combo_regions <- p_pacific + p_arctic + p_atlantic + 
+  plot_layout(ncol = 3) & 
+  theme(plot.margin = margin(t = 0, b = 0))
+
+full_combo_plot <- p_canada_no_legend / wrap_elements(full = combo_regions) + 
+  plot_layout(heights = c(1, 0.8))
+
+ggsave("output/canada_and_regions_combined.png",full_combo_plot,width = 10,height = 7.5,units = "in",dpi = 300)
