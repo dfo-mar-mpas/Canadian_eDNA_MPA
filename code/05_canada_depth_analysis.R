@@ -145,7 +145,6 @@ pacific_seq <- get_sorted_categories("Pacific", "Pacific Average")
 arctic_seq  <- get_sorted_categories("Arctic", "Arctic Average")
 atlantic_seq <- get_sorted_categories("Atlantic", "Atlantic Average")
 
-# Build the final master sequence with unique blank spacers
 full_sequence <- c(
   pacific_seq, "",
   arctic_seq, " ",
@@ -153,9 +152,13 @@ full_sequence <- c(
   "National Average"
 )
 
-# Convert category to an ordered factor matching our newly sorted sequence
-plot_data_spaced <- plot_data_spaced %>%
+# Convert category to an ordered factor matching our sequence, merging back the data values
+plot_data_spaced <- tibble(category = full_sequence) %>%
+  left_join(all_plot_data, by = "category") %>%
   mutate(
+    # Re-apply the category factor levels explicitly so they plot in this exact order
+    category = factor(category, levels = full_sequence),
+    
     # Set fill group based on ocean, falling back for National and Spacers
     fill_group = case_when(
       group_type == "National Average" ~ "National",
@@ -164,16 +167,18 @@ plot_data_spaced <- plot_data_spaced %>%
       ocean == "Atlantic"              ~ "Atlantic",
       TRUE                             ~ "Spacer"
     ),
-    # Make the border thick (e.g., 1.2) for averages, thin (0.2) for normal bioregions/spacers
+    
+    # Make the border thick (1.2) for averages, thin (0.2) for normal bioregions/spacers
     border_width = case_when(
       group_type %in% c("Ocean Average", "National Average") ~ 1.2,
       TRUE ~ 0.2
     )
   )
-
 # 2. Generate the Plot
 p1 <- ggplot(plot_data_spaced, aes(x = category, y = depth_m, fill = fill_group)) +
   
+  # Bold line at sea level (0 m)
+  geom_hline(yintercept = 0, linewidth = 1.1, col = "black") +
   geom_hline(yintercept = c(300, 500), linetype = 2, col = "grey50") +
   
   # Single geom_col pass using aes(linewidth = I(border_width)) for dynamic outlines
@@ -198,6 +203,11 @@ p1 <- ggplot(plot_data_spaced, aes(x = category, y = depth_m, fill = fill_group)
     expand = expansion(mult = c(0, 0))
   ) +
   
+  # Add padding on the left and right sides so the end labels aren't cut off
+  scale_x_discrete(
+    expand = expansion(add = c(0.8, 0.8))
+  ) +
+  
   # Map fills so Ocean Averages match their ocean color, and National is green
   scale_fill_manual(
     values = c(
@@ -214,7 +224,7 @@ p1 <- ggplot(plot_data_spaced, aes(x = category, y = depth_m, fill = fill_group)
   
   labs(
     x = NULL,
-    y = "Area-Weighted Mean Depth (m)",
+    y = "Area-weighted mean depth (m)",
   ) +
   
   theme_bw() +
@@ -222,8 +232,10 @@ p1 <- ggplot(plot_data_spaced, aes(x = category, y = depth_m, fill = fill_group)
   theme(
     panel.grid.major.x = element_blank(),
     panel.grid.minor = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, face = "bold", size = 9),
-    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, face = "bold", size = 6, color = "black"),
+    axis.text.y = element_text(size = 7, color = "black"),
+    axis.title.y = element_text(size = 8.5, color = "black"), # note: changed axis.title.x to y based on context, adjust if needed
+    legend.position = "none",
     plot.margin = margin(t = 5, r = 10, b = 25, l = 10)
   )
 
